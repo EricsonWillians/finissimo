@@ -5,16 +5,17 @@ import time
 from dotenv import load_dotenv
 import requests
 from tqdm import tqdm
+import re
 
 # Load environment variables
 env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(dotenv_path=env_path)
 
 # Define constants
-API_URL = os.getenv('HF_INFERENCE_ENDPOINT')
+API_URL = os.getenv('MAGALU_INFERENCE_ENDPOINT')
+MODEL_NAME = os.getenv('MAGALU_MODEL_NAME')
 HEADERS = {
     "Accept": "application/json",
-    "Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}",
     "Content-Type": "application/json"
 }
 
@@ -96,10 +97,23 @@ def query(payload):
     try:
         response = requests.post(API_URL, headers=HEADERS, json=payload)
         response.raise_for_status()  # Raise an error for bad responses
-        return response.json()
+        response_texts = response.text.strip().split('\n')
+        responses = [json.loads(rt) for rt in response_texts]
+        
+        # Collect all response parts
+        full_response = ""
+        for part in responses:
+            full_response += part.get("response", "")
+
+        # Remove unwanted spaces
+        full_response = re.sub(r'\s+', ' ', full_response).strip()
+        return full_response
     except requests.exceptions.RequestException as e:
         print(f"Error querying the API: {e}")
-        return [{"generated_text": "Não foi possível obter uma resposta detalhada no momento."}]
+        return "Não foi possível obter uma resposta detalhada no momento."
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return "Erro ao decodificar a resposta da API."
 
 # Function to generate synthetic conversations in alpaca_chat format
 def generate_conversations(n, terms, questions):
@@ -111,12 +125,14 @@ def generate_conversations(n, terms, questions):
         input_content = f"Como funciona o {term} no Brasil?"
 
         # Query the LLM for a detailed response
-        response_payload = {"inputs": instruction}
-        response = query(response_payload)
-
-        # Extract the generated response
-        generated_response = response[0].get("generated_text", "Não foi possível obter uma resposta detalhada no momento.")
-        generated_response = generated_response.replace(instruction, "").strip()
+        response_payload = {
+            "model": MODEL_NAME,
+            "prompt": instruction,
+            "max_tokens": 50,
+            "temperature": 0.7,
+            "top_p": 1
+        }
+        generated_response = query(response_payload)
 
         data.append({
             "instruction": instruction,
