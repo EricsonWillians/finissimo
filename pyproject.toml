@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "finissimo"
+version = "0.1.0"
+description = "Finíssimo is an open-source project dedicated to the refinement and fine-tuning of LLM models for specific tasks in the Portuguese (Brazilian) language."
+authors = ["Ericson Willians <rederickdeathwill@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.32.3"
+python-dotenv = "^1.0.1"
+tqdm = "^4.66.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

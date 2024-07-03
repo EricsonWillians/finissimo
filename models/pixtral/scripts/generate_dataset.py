@@ -1,64 +1,43 @@
 import json
 import random
 import os
-from datetime import datetime, timedelta
+import time
+from dotenv import load_dotenv
+import requests
+from tqdm import tqdm
+
+# Load environment variables
+env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path=env_path)
+
+# Define constants
+API_URL = "https://oyipiiu563qy4mqj.us-east-1.aws.endpoints.huggingface.cloud"
+HEADERS = {
+    "Accept": "application/json",
+    "Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}",
+    "Content-Type": "application/json"
+}
 
 # Ensure the output directory exists
-output_dir = 'models/pixtral/dataset'
+output_dir = os.path.join(os.path.dirname(__file__), '..', 'dataset')
 os.makedirs(output_dir, exist_ok=True)
 
 # Define financial terms and concepts
 financial_terms = [
-    "PIX",
-    "transferência bancária",
-    "transferência eletrônica",
-    "depósito bancário",
-    "investimento",
-    "aplicação financeira",
-    "taxa de juros",
-    "juros compostos",
-    "conta corrente",
-    "conta bancária",
-    "conta poupança",
-    "caderneta de poupança",
-    "cartão de crédito",
-    "cartão de débito",
-    "limite de crédito",
-    "empréstimo",
-    "empréstimo pessoal",
-    "empréstimo consignado",
-    "financiamento",
-    "financiamento imobiliário",
-    "financiamento de veículo",
-    "taxa de câmbio",
-    "conversão de moeda",
-    "criptoativos",
-    "criptomoedas",
-    "ativos digitais",
-    "ações",
-    "mercado de ações",
-    "mercado financeiro",
-    "mercado de capitais",
-    "bolsa de valores",
-    "índice da bolsa",
-    "dividendos",
-    "distribuição de lucros",
-    "rendimento",
-    "retorno sobre investimento",
-    "inflação",
-    "desvalorização monetária",
-    "economia",
-    "macroeconomia",
-    "planejamento financeiro",
-    "gestão financeira",
-    "educação financeira",
-    "alfabetização financeira",
-    "comprovante de pagamento",
-    "recibo de pagamento",
-    "pagamento agendado",
-    "agendamento de pagamento",
-    "pagamento efetuado",
-    "pagamento concluído"
+    "PIX", "transferência bancária", "transferência eletrônica", "depósito bancário", 
+    "investimento", "aplicação financeira", "taxa de juros", "juros compostos", 
+    "conta corrente", "conta bancária", "conta poupança", "caderneta de poupança", 
+    "cartão de crédito", "cartão de débito", "limite de crédito", "empréstimo", 
+    "empréstimo pessoal", "empréstimo consignado", "financiamento", 
+    "financiamento imobiliário", "financiamento de veículo", "taxa de câmbio", 
+    "conversão de moeda", "criptoativos", "criptomoedas", "ativos digitais", 
+    "ações", "mercado de ações", "mercado financeiro", "mercado de capitais", 
+    "bolsa de valores", "índice da bolsa", "dividendos", "distribuição de lucros", 
+    "rendimento", "retorno sobre investimento", "inflação", "desvalorização monetária", 
+    "economia", "macroeconomia", "planejamento financeiro", "gestão financeira", 
+    "educação financeira", "alfabetização financeira", "comprovante de pagamento", 
+    "recibo de pagamento", "pagamento agendado", "agendamento de pagamento", 
+    "pagamento efetuado", "pagamento concluído"
 ]
 
 # Define question templates
@@ -113,81 +92,52 @@ questions = [
     "Quais são os recursos educacionais disponíveis para aprender mais sobre {term}?"
 ]
 
+def query(payload):
+    try:
+        response = requests.post(API_URL, headers=HEADERS, json=payload)
+        response.raise_for_status()  # Raise an error for bad responses
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error querying the API: {e}")
+        return [{"generated_text": "Não foi possível obter uma resposta detalhada no momento."}]
+
+# Function to generate synthetic conversations in alpaca_chat format
 def generate_conversations(n, terms, questions):
     data = []
-    for _ in range(n):
+    for _ in tqdm(range(n), desc="Generating conversations"):
         term = random.choice(terms)
-        question = random.choice(questions).format(term=term)
-        answer = f"O {term} é um conceito financeiro importante no Brasil. Ele é utilizado para diversas finalidades, incluindo {term.lower()}."
+        question_template = random.choice(questions)
+        instruction = question_template.format(term=term)
+        input_content = f"Como funciona o {term} no Brasil?"
 
-        # Add specific details for comprovantes de pagamento
-        if "comprovante de pagamento" in term or "pagamento" in term:
-            document_type = "PAGAMENTO" if "efetuado" in term else "AGENDADO"
-            extraction_date = (datetime.now() - timedelta(days=random.randint(0, 30))).strftime("%d/%m/%Y, %H:%M")
-            document_number = f"DOC{random.randint(100000, 999999)}"
-            issue_date = (datetime.now() - timedelta(days=random.randint(0, 30))).strftime("%d/%m/%Y")
-            due_date = (datetime.now() + timedelta(days=random.randint(1, 30))).strftime("%d/%m/%Y")
-            payment_date = (datetime.now() - timedelta(days=random.randint(0, 30))).strftime("%d/%m/%Y") if document_type == "PAGAMENTO" else None
-            bank_name = "Banco Exemplo"
-            transaction_time = datetime.now().strftime("%H:%M:%S")
-            transaction_code = f"TRANS{random.randint(1000, 9999)}"
-            branch = f"{random.randint(100, 999)}"
-            account_number = f"{random.randint(10000000, 99999999)}"
-            transaction_type = random.choice(["Crédito", "Débito"])
-            customer_name = "Nome Cliente"
-            beneficiary_legal_name = "Nome Beneficiário"
-            beneficiary_trade_name = "Nome Comercial Beneficiário"
-            beneficiary_tax_id = f"{random.randint(10000000000, 99999999999)}"
-            ultimate_beneficiary_name = "Nome Beneficiário Final"
-            ultimate_beneficiary_tax_id = f"{random.randint(10000000000, 99999999999)}"
-            payer_legal_name = "Nome Pagador"
-            payer_tax_id = f"{random.randint(10000000000, 99999999999)}"
-            payer_id = f"ID{random.randint(1000, 9999)}"
-            invoice_amount = f"{random.uniform(100.0, 10000.0):.2f}"
-            paid_amount = invoice_amount if document_type == "PAGAMENTO" else None
-            payment_status = "Pago" if document_type == "PAGAMENTO" else "Agendado"
-            notes = None
-            document_url = "http://exemplo.com/documento.pdf"
+        # Query the LLM for a detailed response
+        response_payload = {"inputs": instruction}
+        response = query(response_payload)
 
-            answer += (
-                f" Este documento financeiro detalha uma transação do tipo {document_type}. Aqui estão os detalhes completos:\n"
-                f"- Número do Documento: {document_number}\n"
-                f"- Data de Emissão: {issue_date}\n"
-                f"- Data de Vencimento: {due_date}\n"
-                f"- Nome do Banco: {bank_name}\n"
-                f"- Hora da Transação: {transaction_time}\n"
-                f"- Código da Transação: {transaction_code}\n"
-                f"- Agência Bancária: {branch}\n"
-                f"- Número da Conta: {account_number}\n"
-                f"- Tipo de Transação: {transaction_type}\n"
-                f"- Nome do Cliente: {customer_name}\n"
-                f"- Nome Legal do Beneficiário: {beneficiary_legal_name}\n"
-                f"- Nome Comercial do Beneficiário: {beneficiary_trade_name}\n"
-                f"- CPF/CNPJ do Beneficiário: {beneficiary_tax_id}\n"
-                f"- Nome do Beneficiário Final: {ultimate_beneficiary_name}\n"
-                f"- CPF/CNPJ do Beneficiário Final: {ultimate_beneficiary_tax_id}\n"
-                f"- Nome Legal do Pagador: {payer_legal_name}\n"
-                f"- CPF/CNPJ do Pagador: {payer_tax_id}\n"
-                f"- ID do Pagador: {payer_id}\n"
-                f"- Valor da Fatura: R$ {invoice_amount}\n"
-                f"- Valor Pago: R$ {paid_amount if paid_amount else 'N/A'}\n"
-                f"- Status do Pagamento: {payment_status}\n"
-                f"- Notas: {notes}\n"
-                f"- URL do Documento: {document_url}\n"
-                f"Esses detalhes garantem a transparência e a rastreabilidade das transações financeiras, proporcionando segurança e confiança para todas as partes envolvidas."
-            )
+        # Extract the generated response
+        generated_response = response[0].get("generated_text", "Não foi possível obter uma resposta detalhada no momento.")
 
-        data.append({"question": question, "answer": answer})
+        data.append({
+            "instruction": instruction,
+            "input": input_content,
+            "response": generated_response
+        })
+
+        # Sleep to avoid overwhelming the endpoint
+        time.sleep(1)  # Adjust the sleep time as needed
     return data
 
 # Generate a dataset with a specified number of conversations
 num_conversations = 1000
-# Correctly pass the terms and questions to the function
+
+# Generate the dataset
 synthetic_data = generate_conversations(num_conversations, financial_terms, questions)
 
-# Save the dataset to a JSON file
-output_file = 'models/pixtral/dataset/synthetic_financial_pix_dataset.json'
+# Save the dataset to a JSONL file in alpaca_chat format
+output_file = os.path.join(output_dir, 'synthetic_financial_pix_dataset.jsonl')
 with open(output_file, 'w', encoding='utf-8') as f:
-    json.dump(synthetic_data, f, ensure_ascii=False, indent=4)
+    for entry in synthetic_data:
+        json.dump(entry, f, ensure_ascii=False)
+        f.write('\n')
 
 print(f"Synthetic dataset with {num_conversations} financial conversations saved to {output_file}")
